@@ -13,7 +13,7 @@ class OutputProductsCommandTest extends KernelTestCase
     private const INVALID = 2;
     private const COMMAND_NAME = 'app:output-products';
     private const FILENAME_PATH = __DIR__.'/../../tests/dataProvider/products.csv';
-    private const FILENAME_HTML = __DIR__.'/../../tests/dataProvider/products.html';
+    private const FILENAME_PATH_HTML = __DIR__.'/../../tests/dataProvider/products.html';
 
     public function testCommandSuccess()
     {
@@ -42,18 +42,20 @@ class OutputProductsCommandTest extends KernelTestCase
 
         $command = $application->find(self::COMMAND_NAME);
         $commandTester = new CommandTester($command);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionCode(self::INVALID);
+        $this->expectExceptionMessage('Le fichier fourni n\'a pas le bon type');
         $commandTester->execute([
             'command' => $command->getName(),
-            'filename-path' => self::FILENAME_HTML
+            'filename-path' => self::FILENAME_PATH_HTML
         ]);
-
-        $fileExtension = pathinfo(self::FILENAME_HTML, PATHINFO_EXTENSION);
-
-        $this->assertNotSame('csv', $fileExtension);
-        $this->assertEquals(self::INVALID, $commandTester->getStatusCode(), 'Code retour commande invalide');
     }
 
-    private function initialize()
+    /**
+     * @return Application
+     */
+    private function initialize(): Application
     {
         $kernel = self::bootKernel();
         $application = new Application($kernel);

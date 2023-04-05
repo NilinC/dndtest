@@ -31,7 +31,7 @@ class OutputProductsCommand extends Command
     {
         $filename = $input->getArgument(self::FILENAME_PATH);
 
-        $this->testFileExtension(pathinfo($filename, PATHINFO_EXTENSION), $output);
+        $this->testFileExtension(pathinfo($filename, PATHINFO_EXTENSION));
 
         try {
             $handle = fopen($filename, 'r');
@@ -80,12 +80,12 @@ class OutputProductsCommand extends Command
         ;
     }
 
-    private function testFileExtension($fileExtension, $output)
+    private function testFileExtension($fileExtension)
     {
         if ('csv' !== $fileExtension) {
-            $output->write('Le fichier fourni n\'a pas le bon type');
-
-            return Command::INVALID;
+            throw new \RuntimeException(
+                'Le fichier fourni n\'a pas le bon type',
+                Command::INVALID);
         }
     }
 
