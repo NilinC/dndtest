@@ -31,14 +31,15 @@ class OutputProductsCommand extends Command
     {
         $filename = $input->getArgument(self::FILENAME_PATH);
 
-        $fileExtension = pathinfo($filename, PATHINFO_EXTENSION);
-        if ('csv' !== $fileExtension) {
-            print('Le fichier fourni n\'a pas le bon type');
+        $this->testFileExtension(pathinfo($filename, PATHINFO_EXTENSION), $output);
+
+        try {
+            $handle = fopen($filename, 'r');
+        } catch (\ErrorException $exception) {
+            $output->writeln('Le lien vers le fichier est incorrect ' . $exception);
 
             return Command::INVALID;
         }
-
-        $handle = fopen($filename, 'r');
 
         $products = [];
         while (($data = fgetcsv($handle, null, ";")) !== FALSE) {
@@ -77,6 +78,15 @@ class OutputProductsCommand extends Command
         $this
             ->addArgument(self::FILENAME_PATH, InputArgument::REQUIRED, 'lien vers le fichier CSV à afficher')
         ;
+    }
+
+    private function testFileExtension($fileExtension, $output)
+    {
+        if ('csv' !== $fileExtension) {
+            $output->write('Le fichier fourni n\'a pas le bon type');
+
+            return Command::INVALID;
+        }
     }
 
     /**
