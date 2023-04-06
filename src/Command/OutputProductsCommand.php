@@ -46,18 +46,26 @@ class OutputProductsCommand extends Command
             $products[] = $data;
         }
 
+        // On doit transformer le tableau associatif en simple tableau pour le array_combine()
+        $keys = $this->flatten(array_slice($products, 0,1));
         // On supprime la première ligne du fichier car les headers sont définis via une constante
-        $productsLines = array_splice($products, 1, count($products));
+        $values = array_splice($products, 1, count($products));
+
+        // On crée un tableau associatif avec la 1ère ligne du CSV comme keys et les lignes des produits comme values
+        $combineArray = [];
+        foreach ($values as $line) {
+            $combineArray[] = array_combine($keys, $line);
+        }
 
         $rows = [];
-        foreach ($productsLines as $productLine) {
+        foreach ($combineArray as $productLine) {
             $rows[] = [
-                    $productLine[0],
-                    ('1' === $productLine[2]) ? self::ENABLE : self::DISABLE,
-                    $this->formatPrice($productLine[3]) . $productLine[4],
-                    $this->br2nl($productLine[5]),
-                    $this->formatDate($productLine[6]),
-                    $this->formatSlug($productLine[1]),
+                    $productLine['sku'],
+                    ('1' === $productLine['is_enabled']) ? self::ENABLE : self::DISABLE,
+                    $this->formatPrice($productLine['price']) . $productLine['currency'],
+                    $this->br2nl($productLine['description']),
+                    $this->formatDate($productLine['created_at']),
+                    $this->formatSlug($productLine['title']),
             ];
         }
 
@@ -87,6 +95,21 @@ class OutputProductsCommand extends Command
                 'Le fichier fourni n\'a pas le bon type',
                 Command::INVALID);
         }
+    }
+
+    /**
+     * Cette fonction permet de transformer un tableau associatif en simple tableau
+     *
+     * @param $array
+     * @return array
+     */
+    private function flatten($array): array
+    {
+        $flattenArray = [];
+
+        array_walk_recursive($array, function($value) use (&$flattenArray) { $flattenArray[] = $value; });
+
+        return $flattenArray;
     }
 
     /**
