@@ -113,14 +113,14 @@ class OutputProductsCommand extends Command
     }
 
     /**
-     * Fonction qui va afficher le prix en remplaçant le . par une ,
+     * Fonction qui va afficher le prix, arrondi au dixième, avec 2 décimales après la virgule
      *
      * @param string $string
      * @return string
      */
     private function formatPrice(string $string): string
     {
-        return preg_replace('/(\d+)\./', '${1},',$string);
+        return number_format($string, 2, ",", null);
     }
 
     /**
