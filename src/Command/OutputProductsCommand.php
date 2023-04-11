@@ -2,11 +2,14 @@
 
 namespace App\Command;
 
+use App\Model\Headers;
+use App\Formatter\Formatter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(
@@ -15,23 +18,24 @@ use Symfony\Component\Console\Output\OutputInterface;
 )]
 class OutputProductsCommand extends Command
 {
-    private const HEADERS = [
-        'Sku',
-        'Status',
-        'Price',
-        'Description',
-        'Created At',
-        'Slug',
-    ];
     private const ENABLE = "Enable";
     private const DISABLE = "Disable";
     private const FILENAME_PATH = 'filename-path';
+    private const JSON_OUTPUT_OPTION = 'json';
+
+    private Formatter $formatter;
+
+    public function __construct(Formatter $formatter)
+    {
+        $this->formatter = $formatter;
+        parent::__construct();
+    }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $filename = $input->getArgument(self::FILENAME_PATH);
 
-        $this->testFileExtension(pathinfo($filename, PATHINFO_EXTENSION));
+        $this->testFileExtensionIsCsv(pathinfo($filename, PATHINFO_EXTENSION));
 
         try {
             $handle = fopen($filename, 'r');
@@ -46,6 +50,8 @@ class OutputProductsCommand extends Command
             $products[] = $data;
         }
 
+        fclose($handle);
+
         // On doit transformer le tableau associatif en simple tableau pour le array_combine()
         $keys = $this->flatten(array_slice($products, 0,1));
         // On supprime la première ligne du fichier car les headers sont définis via une constante
@@ -57,26 +63,20 @@ class OutputProductsCommand extends Command
             $combineArray[] = array_combine($keys, $line);
         }
 
-        $rows = [];
-        foreach ($combineArray as $productLine) {
-            $rows[] = [
-                    $productLine['sku'],
-                    ('1' === $productLine['is_enabled']) ? self::ENABLE : self::DISABLE,
-                    $this->formatPrice($productLine['price']) . $productLine['currency'],
-                    $this->br2nl($productLine['description']),
-                    $this->formatDate($productLine['created_at']),
-                    $this->formatSlug($productLine['title']),
-            ];
+        $rows = $this->createProductsRows($combineArray, $this->formatter);
+
+        if ($input->getOption(self::JSON_OUTPUT_OPTION)) {
+            $output->writeln(json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+            return Command::SUCCESS;
         }
 
         $table = new Table($output);
         $table
-            ->setHeaders(self::HEADERS)
-            ->setRows($rows)
+            ->setHeaders(Headers::serialize())
+            ->setRows(array_values($rows))
         ;
         $table->render();
-
-        fclose($handle);
 
         return Command::SUCCESS;
     }
@@ -85,10 +85,11 @@ class OutputProductsCommand extends Command
     {
         $this
             ->addArgument(self::FILENAME_PATH, InputArgument::REQUIRED, 'lien vers le fichier CSV à afficher')
+            ->addOption(self::JSON_OUTPUT_OPTION, null, InputOption::VALUE_NONE, 'Option pour afficher les produits sous format JSON plutôt que tableau formaté')
         ;
     }
 
-    private function testFileExtension($fileExtension)
+    private function testFileExtensionIsCsv($fileExtension)
     {
         if ('csv' !== $fileExtension) {
             throw new \RuntimeException(
@@ -107,60 +108,33 @@ class OutputProductsCommand extends Command
     {
         $flattenArray = [];
 
-        array_walk_recursive($array, function($value) use (&$flattenArray) { $flattenArray[] = $value; });
+        array_walk_recursive($array, function ($value) use (&$flattenArray) {
+            $flattenArray[] = $value;
+        });
 
         return $flattenArray;
     }
 
     /**
-     * Fonction qui va afficher le prix, arrondi au dixième, avec 2 décimales après la virgule
+     * Fonction qui va créer un tableau associatif pour positionner les données des produits dans les bonnes colonnes
      *
-     * @param string $string
-     * @return string
+     * @param array $array
+     * @return array
      */
-    private function formatPrice(string $string): string
+    private function createProductsRows(array $array, Formatter $formatter): array
     {
-        return number_format($string, 2, ",", null);
-    }
+        $result = [];
+        foreach ($array as $line) {
+            $result[] = [
+                Headers::Sku->name => $line['sku'],
+                Headers::Status->name => ('1' === $line['is_enabled']) ? self::ENABLE : self::DISABLE,
+                Headers::Price->name => $formatter->formatPrice($line['price']) . $line['currency'],
+                Headers::Description->name => $formatter->formatDescription($line['description']),
+                Headers::CreatedAt->name => $formatter->formatDate($line['created_at']),
+                Headers::Slug->name => $formatter->formatSlug($line['title']),
+            ];
+        }
 
-    /**
-     * Fonction qui interprète les balises HTML et les caractères de retour à la ligne
-     *
-     * @param string $string
-     * @return string
-     */
-    private function br2nl(string $string): string
-    {
-        $formattedString = str_replace(['\r\n', '\n', '\r'], "\n", $string);
-
-        return preg_replace('/\<(\s*)?br(\s*)?\/?\>/i', "\n", $formattedString);
-    }
-
-    /**
-     * Fonction qui va formater la date selon la RFC 850 (standard for interchange of USENET messages)
-     *
-     * @param string $string
-     * @return string
-     */
-    private function formatDate(string $string): string
-    {
-        $date = \DateTime::createFromFormat('Y-m-d H:i:s', $string);
-        $date->setTimezone(new \DateTimeZone('CET'));
-
-        return $date->format(\DateTimeInterface::RFC850);
-    }
-
-
-    /**
-     * Fonction qui remplace les espaces et caractères spéciaux pour formatter la colonne slug
-     * @param string $string
-     * @return string
-     */
-    private function formatSlug(string $string) : string
-    {
-        $formattedString = preg_replace('/[\/\&%#,\$]/i', '_', $string);
-        $formattedString = preg_replace('/ /', "-", $formattedString);
-
-        return strtolower($formattedString);
+        return $result;
     }
 }
