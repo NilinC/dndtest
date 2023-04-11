@@ -2,24 +2,24 @@
 
 namespace App\Model;
 
-enum Headers: String
+enum Headers
 {
-    case Sku = "Sku";
-    case Status = "Status";
-    case Price = "Price";
-    case Description = "Description";
-    case CreatedAt = "Created At";
-    case Slug = "Slug";
+    case Sku;
+    case Status;
+    case Price;
+    case Description;
+    case CreatedAt;
+    case Slug;
 
     public static function serialize(): array
     {
         return [
-            self::Sku->value,
-            self::Status->value,
-            self::Price->value,
-            self::Description->value,
-            self::CreatedAt->value,
-            self::Slug->value
+            self::Sku->name,
+            self::Status->name,
+            self::Price->name,
+            self::Description->name,
+            self::CreatedAt->name,
+            self::Slug->name
         ];
     }
 }

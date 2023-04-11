@@ -3,6 +3,7 @@
 namespace App\Tests\Command;
 
 use App\Command\OutputProductsCommand;
+use App\Formatter\Formatter;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -59,7 +60,13 @@ class OutputProductsCommandTest extends KernelTestCase
     {
         $kernel = self::bootKernel();
         $application = new Application($kernel);
-        $application->add(new OutputProductsCommand());
+
+        $formatter = $this->createMock(Formatter::class);
+        $formatter->method('flatten')->willReturn([
+            'sku', 'title', 'is_enabled', 'price', 'currency', 'description', 'created_at'
+        ]);
+
+        $application->add(new OutputProductsCommand($formatter));
 
         return $application;
     }
