@@ -124,14 +124,16 @@ class OutputProductsCommand extends Command
     }
 
     /**
-     * Fonction qui interprète les balises HTML
+     * Fonction qui interprète les balises HTML et les caractères de retour à la ligne
      *
      * @param string $string
      * @return string
      */
     private function br2nl(string $string): string
     {
-        return preg_replace('/\<(\s*)?br(\s*)?\/?\>/i', "\n", $string);
+        $formattedString = str_replace(['\r\n', '\n', '\r'], "\n", $string);
+
+        return preg_replace('/\<(\s*)?br(\s*)?\/?\>/i', "\n", $formattedString);
     }
 
     /**
