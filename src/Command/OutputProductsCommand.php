@@ -2,11 +2,9 @@
 
 namespace App\Command;
 
-use App\Model\Headers;
-use App\Formatter\Formatter;
+use App\Formatter\ProductFormatter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -21,9 +19,9 @@ class OutputProductsCommand extends Command
     private const FILENAME_PATH = 'filename-path';
     private const JSON_OUTPUT_OPTION = 'json';
 
-    private Formatter $formatter;
+    private ProductFormatter $formatter;
 
-    public function __construct(Formatter $formatter)
+    public function __construct(ProductFormatter $formatter)
     {
         $this->formatter = $formatter;
         parent::__construct();
@@ -43,38 +41,22 @@ class OutputProductsCommand extends Command
             return Command::INVALID;
         }
 
-        $products = [];
+        $lines = [];
         while (($data = fgetcsv($handle, null, ";")) !== FALSE) {
-            $products[] = $data;
+            $lines[] = $data;
         }
 
         fclose($handle);
 
-        // On doit transformer le tableau associatif en simple tableau pour le array_combine()
-        $keys = $this->formatter->flatten(array_slice($products, 0, 1));
-        // On supprime la première ligne du fichier car les headers sont définis via une constante
-        $values = array_splice($products, 1, count($products));
-
-        // On crée un tableau associatif avec la 1ère ligne du CSV comme keys et les lignes des produits comme values
-        $combineArray = [];
-        foreach ($values as $line) {
-            $combineArray[] = array_combine($keys, $line);
-        }
-
-        $rows = $this->formatter->createProductsRows($combineArray, $this->formatter);
+        $products = $this->formatter->createProductsRows($lines);
 
         if ($input->getOption(self::JSON_OUTPUT_OPTION)) {
-            $output->writeln(json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+            $output->writeln(json_encode($products, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
             return Command::SUCCESS;
         }
 
-        $table = new Table($output);
-        $table
-            ->setHeaders(Headers::serialize())
-            ->setRows(array_values($rows))
-        ;
-        $table->render();
+        $this->formatter->renderProductsTable($products, $output);
 
         return Command::SUCCESS;
     }
