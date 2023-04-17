@@ -14,8 +14,21 @@ $ cd dndtest/
 $ composer install
 
 // Pour lancer la commande
-$ php bin/console app:read-file <lien_fichier.csv>
+$ php bin/console app:output-products <lien_fichier.csv>
+
+// Pour obtenir le rendu sous format JSON
+$ php bin/console app:output-products <lien_fichier.csv> --json
 
 // Pour lancer les tests unitaires
 $ php bin/phpunit
 ```
+
+Voici les exemples de rendu selon les options passées ou non à la commande
+
+**Sans option**
+
+![outputProductsTable.png](documentation/outputProductsTable.png)
+
+**Avec option JSON**
+
+![outputProductsJson.png](documentation/outputProductsJson.png)
